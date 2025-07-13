@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><title>Ask a Question</title></head>
+<body>
+<h1>Ask a Question</h1>
+<form th:action="@{/ask}" method="post" th:object="${questionRequest}">
+    <label>Question:</label>
+    <input type="text" th:field="*{text}" required />
+    <label>Document ID:</label>
+    <input type="number" th:field="*{documentId}" required />
+    <button type="submit">Ask</button>
+</form>
+
+<div th:if="${answer}">
+    <h2>Answer:</h2>
+    <p th:text="${answer}"></p>
+</div>
+<a href="/history">View History</a>
+</body>
+</html> 

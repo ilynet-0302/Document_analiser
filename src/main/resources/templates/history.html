@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head><title>Question History</title></head>
+<body>
+<h1>Question History</h1>
+<a href="/ask">Ask a Question</a>
+<table>
+  <tr>
+    <th>#</th>
+    <th>Question</th>
+    <th>Answer</th>
+    <th>Asked At</th>
+    <th>Document ID</th>
+  </tr>
+  <tr th:each="q, qStat : ${history}">
+    <td th:text="${qStat.count}"></td>
+    <td th:text="${q.questionText}"></td>
+    <td th:text="${q.answerText}"></td>
+    <td th:text="${#temporals.format(q.askedAt, 'yyyy-MM-dd HH:mm')}"></td>
+    <td th:text="${q.documentId}"></td>
+  </tr>
+</table>
+</body>
+</html> 

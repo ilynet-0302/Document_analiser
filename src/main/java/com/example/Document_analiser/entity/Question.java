@@ -12,6 +12,10 @@ public class Question {
     private LocalDateTime askedAt;
     @ManyToOne
     private Document document;
+    @ManyToOne
+    private User user;
+    @OneToOne(mappedBy = "question", cascade = CascadeType.ALL)
+    private Answer answer;
 
     // Getters and Setters
     public Long getId() {
@@ -44,5 +48,19 @@ public class Question {
 
     public void setDocument(Document document) {
         this.document = document;
+    }
+
+    public Answer getAnswer() {
+        return answer;
+    }
+    public void setAnswer(Answer answer) {
+        this.answer = answer;
+    }
+
+    public User getUser() {
+        return user;
+    }
+    public void setUser(User user) {
+        this.user = user;
     }
 } 

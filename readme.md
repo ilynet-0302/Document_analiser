@@ -1,226 +1,209 @@
 # 📄 Document Analyzer
 
-A Spring Boot application that enables intelligent document analysis through AI-powered question answering. Upload documents, ask questions in natural language, and get context-aware answers using OpenAI's GPT models and semantic search with pgvector.
+A full-stack Spring Boot application for intelligent document analysis. Upload documents, ask questions in natural language, and get context-aware answers using OpenAI's GPT models and semantic search. Features secure user authentication, role-based access, and a modern web UI with Thymeleaf.
+
+---
 
 ## ✨ Features
 
-### 🔍 **Document Processing**
-- **File Upload**: Support for TXT files (PDF/DOCX coming soon)
-- **Content Extraction**: Automatic text extraction from uploaded documents
-- **Metadata Storage**: Document name, type, upload date, and content storage
-- **Vector Embeddings**: Semantic indexing using OpenAI embeddings
+- **Document Upload**: TXT file support (PDF/DOCX coming soon)
+- **AI-Powered Q&A**: Ask questions about your documents, get context-aware answers
+- **Semantic Search**: Relevant context extraction using vector similarity (pgvector)
+- **User Accounts**: Register, login, and manage your own question/answer history
+- **Role-Based Security**: JWT authentication, user/ADMIN roles, secure endpoints
+- **Web UI**: Ask questions and view your history via a modern Thymeleaf interface
+- **REST API**: Clean, documented endpoints for all operations
 
-### 🤖 **AI-Powered Analysis**
-- **Natural Language Questions**: Ask questions about your documents
-- **Context-Aware Answers**: AI generates responses based on document content
-- **Semantic Search**: Find relevant document sections using vector similarity
-- **Conversation History**: Track all questions and answers
-
-### 🗄️ **Data Management**
-- **PostgreSQL Database**: Reliable document and conversation storage
-- **pgvector Integration**: High-performance vector similarity search
-- **JPA Entities**: Structured data model for documents, questions, and answers
-- **RESTful API**: Clean, documented endpoints for all operations
+---
 
 ## 🛠️ Technology Stack
 
-| Component | Technology | Purpose |
-|-----------|------------|---------|
-| **Backend Framework** | Spring Boot 3.5.3 | Application foundation |
-| **AI Integration** | Spring AI | OpenAI API integration |
-| **Vector Database** | pgvector + PostgreSQL | Semantic search storage |
-| **Data Persistence** | Spring Data JPA | Database operations |
-| **API Layer** | Spring Web | REST endpoints |
-| **Build Tool** | Maven | Dependency management |
-| **Language** | Java 21 | Core development |
+| Component         | Technology                |
+|-------------------|--------------------------|
+| Backend           | Spring Boot 3.5.3        |
+| AI Integration    | Spring AI, OpenAI API    |
+| Vector DB         | pgvector + PostgreSQL    |
+| Persistence       | Spring Data JPA          |
+| Security          | Spring Security, JWT     |
+| Web UI            | Thymeleaf                |
+| Build Tool        | Maven                    |
+| Language          | Java 21                  |
+
+---
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Java 21 or higher
+
+- Java 21+
 - Maven 3.6+
 - PostgreSQL 12+ with pgvector extension
 - OpenAI API key
 
 ### 1. Database Setup
-```sql
--- Create database
-CREATE DATABASE document_analyser;
 
--- Enable pgvector extension
+```sql
+CREATE DATABASE document_analyser;
+\c document_analyser
 CREATE EXTENSION IF NOT EXISTS vector;
 ```
 
 ### 2. Configuration
+
+Set your OpenAI API key:
 ```bash
-# Set OpenAI API key
 export OPENAI_API_KEY=your_openai_api_key_here
 ```
 
-Update `src/main/resources/application.properties`:
+Edit `src/main/resources/application.properties`:
 ```properties
 spring.datasource.url=jdbc:postgresql://localhost:5432/document_analyser
 spring.datasource.username=your_username
 spring.datasource.password=your_password
 ```
 
-### 3. Run the Application
-```bash
-# Build the project
-mvn clean install
+### 3. Build & Run
 
-# Start the application
+```bash
+mvn clean install
 mvn spring-boot:run
 ```
 
-The application will be available at `http://localhost:8080`
+Visit: [http://localhost:8080/ask](http://localhost:8080/ask) (web UI)
+
+---
+
+## 🔐 Authentication & Security
+
+- **Register:** `POST /auth/register` (JSON: username, password, [role])
+- **Login:** `POST /auth/login` (JSON: username, password) → returns JWT
+- **JWT Required:** All API and UI endpoints except `/auth/*`
+- **Role-based:** Default role is USER; ADMIN role for future features
+
+**Example: Register & Login**
+```bash
+curl -X POST -H "Content-Type: application/json" -d '{"username":"alice","password":"pass123"}' http://localhost:8080/auth/register
+curl -X POST -H "Content-Type: application/json" -d '{"username":"alice","password":"pass123"}' http://localhost:8080/auth/login
+# Use the returned token as: Authorization: Bearer <token>
+```
+
+---
 
 ## 📡 API Endpoints
 
 ### Document Management
 
-#### Upload Document
-```http
-POST /api/documents
-Content-Type: multipart/form-data
+- **Upload Document:**  
+  `POST /api/documents` (multipart/form-data, param: `file`)
 
-file: [your_document.txt]
-```
+- **Ask Question (API):**  
+  `POST /api/questions` (JSON: text, documentId)  
+  Returns: `{ "answer": "...", "generatedAt": "..." }`
 
-**Response:**
-```json
-"Document uploaded."
-```
+- **Question History (API):**  
+  `GET /api/questions/history`  
+  Returns: list of your questions/answers
 
-#### Ask Question
-```http
-POST /ask
-Content-Type: text/plain
+### User Interface (Thymeleaf)
 
-What is this document about?
-```
+- **Ask a Question:**  
+  `GET /ask` (form), `POST /ask` (submit question, see answer)
 
-**Response:**
-```json
-"Dummy response"
-```
+- **View History:**  
+  `GET /history` (table of your questions/answers)
 
-### Example Usage
+---
 
-#### Using curl
-```bash
-# Upload a document
-curl -X POST -F "file=@document.txt" http://localhost:8080/api/documents
+## 🖥️ Web UI
 
-# Ask a question
-curl -X POST -H "Content-Type: text/plain" \
-  -d "What are the main topics discussed in the document?" \
-  http://localhost:8080/ask
-```
+- **/ask**: Submit a question about a document (enter question and document ID)
+- **/history**: View your own question/answer history (table, sortable)
 
-#### Using Postman
-1. Create a new POST request to `http://localhost:8080/api/documents`
-2. Set body to `form-data`
-3. Add key `file` with type `File`
-4. Select your document and send
+---
 
 ## 🏗️ Project Structure
 
 ```
 src/main/java/com/example/Document_analiser/
 ├── DocumentAnaliserApplication.java    # Main application class
-├── ChatClient.java                     # Chat client implementation
-├── ChatController.java                 # Chat REST controller
-├── controller/
-│   └── DocumentController.java         # Document upload controller
-├── service/
-│   └── DocumentService.java            # Document processing service
 ├── entity/
-│   ├── Document.java                   # Document entity
-│   ├── Question.java                   # Question entity
-│   └── Answer.java                     # Answer entity
+│   ├── User.java, Role.java           # User authentication & roles
+│   ├── Document.java                  # Document entity
+│   ├── Question.java                  # Question entity (linked to User & Document)
+│   └── Answer.java                    # Answer entity
 ├── repository/
-│   ├── DocumentRepository.java         # Document repository
-│   ├── QuestionRepository.java         # Question repository
-│   └── AnswerRepository.java           # Answer repository
+│   ├── UserRepository.java
+│   ├── DocumentRepository.java
+│   ├── QuestionRepository.java
+│   └── AnswerRepository.java
+├── service/
+│   ├── QuestionService.java
+│   ├── DocumentService.java
+│   └── CustomUserDetailsService.java
+├── controller/
+│   ├── AuthController.java            # Register/login endpoints
+│   ├── UiController.java              # Thymeleaf UI endpoints
+│   ├── QuestionController.java        # REST API for questions
+│   └── DocumentController.java        # REST API for documents
+├── security/
+│   ├── JwtUtil.java, JwtFilter.java   # JWT authentication
 ├── dto/
-│   ├── QuestionRequest.java            # Question request DTO
-│   └── AnswerResponse.java             # Answer response DTO
-└── config/
-    └── DatabaseConfig.java             # Database configuration
+│   ├── RegisterRequest.java, LoginRequest.java, JwtResponse.java
+│   ├── QuestionRequest.java, AnswerResponse.java, QuestionHistoryDto.java
+├── config/
+│   ├── SecurityConfig.java, DatabaseConfig.java
+└── resources/templates/
+    ├── ask.html, history.html         # Thymeleaf UI templates
 ```
-
-## 📊 Data Model
-
-### Document Entity
-- `id`: Primary key
-- `name`: Original filename
-- `type`: File extension
-- `uploadDate`: Timestamp of upload
-- `content`: Extracted text content (LOB)
-
-### Question Entity
-- `id`: Primary key
-- `text`: Question content
-- `askedAt`: Timestamp
-- `document`: Reference to related document
-
-### Answer Entity
-- `id`: Primary key
-- `text`: AI-generated answer (LOB)
-- `generatedAt`: Timestamp
-- `question`: One-to-one relationship with question
-
-## 🔮 Roadmap
-
-### Phase 1: Core Features ✅
-- [x] Document upload and storage
-- [x] Basic text extraction
-- [x] JPA entity structure
-- [x] REST API endpoints
-- [x] Database configuration
-
-### Phase 2: AI Integration 🚧
-- [ ] OpenAI embedding generation
-- [ ] Vector similarity search
-- [ ] Context-aware question answering
-- [ ] Document chunking for large files
-
-### Phase 3: Enhanced Features 📋
-- [ ] PDF and DOCX support (Apache Tika)
-- [ ] Document versioning
-- [ ] User authentication
-- [ ] Web interface (Thymeleaf)
-- [ ] Advanced search filters
-
-### Phase 4: Production Ready 🎯
-- [ ] Performance optimization
-- [ ] Security hardening
-- [ ] Monitoring and logging
-- [ ] Docker containerization
-- [ ] CI/CD pipeline
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🆘 Support
-
-For detailed setup instructions, see [SETUP.md](SETUP.md)
-
-For issues and questions:
-- Create an issue in the repository
-- Check the setup guide for common problems
-- Review the application logs for error details
 
 ---
 
-**Built with ❤️ using Spring Boot and OpenAI**
+## 📊 Data Model
+
+- **User**: id, username, password (hashed), role (USER/ADMIN)
+- **Document**: id, name, type, uploadDate, content
+- **Question**: id, text, askedAt, document (ref), user (ref), answer (ref)
+- **Answer**: id, text, generatedAt, question (ref)
+
+---
+
+## 📝 Example Usage
+
+**Upload a document:**
+```bash
+curl -X POST -F "file=@document.txt" http://localhost:8080/api/documents -H "Authorization: Bearer <token>"
+```
+
+**Ask a question (API):**
+```bash
+curl -X POST -H "Authorization: Bearer <token>" -H "Content-Type: application/json" \
+  -d '{"text":"What is this document about?","documentId":1}' \
+  http://localhost:8080/api/questions
+```
+
+**Web UI:**
+- Go to `/ask` to submit a question
+- Go to `/history` to view your own Q&A history
+
+---
+
+## 🏁 Roadmap
+
+- [x] User authentication & JWT security
+- [x] Per-user question/answer history
+- [x] Web UI with Thymeleaf
+- [x] REST API for all operations
+- [ ] PDF/DOCX support
+- [ ] Vector search for semantic context
+- [ ] Admin features & advanced analytics
+
+---
+
+## 🆘 Support
+
+- See [SETUP.md](SETUP.md) for detailed setup
+- For issues, open a GitHub issue or check logs
+
+---
+
+**Built with ❤️ using Spring Boot, OpenAI, and Thymeleaf**

@@ -12,6 +12,7 @@ public class Answer {
     private String text;
     private LocalDateTime generatedAt;
     @OneToOne
+    @JoinColumn(name = "question_id")
     private Question question;
 
     // Getters and Setters
