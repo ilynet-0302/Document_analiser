@@ -46,6 +46,10 @@ public class QuestionService {
         this.vectorStore = vectorStore;
     }
 
+    public QuestionRepository getQuestionRepository() {
+        return questionRepository;
+    }
+
     @Transactional
     public AnswerResponse askQuestion(QuestionRequest request) {
         // Validate document existence
@@ -68,21 +72,34 @@ public class QuestionService {
         // Generate embedding for the question
         float[] questionEmbedding = embeddingClient.embed(request.getText());
 
-        // Similarity search (top 3)
-        List<Vector> matches = vectorStore.similaritySearch(questionEmbedding, 3);
-        if (matches.isEmpty()) {
-            throw new IllegalStateException("No similar content found for this question");
-        }
-        String context = matches.stream()
+        // Similarity search (top 5)
+        List<Vector> matches = vectorStore.similaritySearch(questionEmbedding, 5);
+        String contextChunks = matches.stream()
                 .map(v -> v.getMetadata().get("content"))
-                .collect(Collectors.joining("\n"));
+                .collect(Collectors.joining("\n---\n"));
 
-        // Compose prompt
-        String prompt = "Answer the following question based on the context:\n" +
-                context + "\n\nQuestion: " + request.getText();
+        // Prompt engineering
+        String systemPrompt = "You are an intelligent assistant that answers questions based only on provided context. " +
+                "If the context does not contain enough information, say 'I don't know based on the document'.";
+
+        String fewShotExample = "Example:\nQ: What is the main topic of the document?\nA: The document discusses network security protocols.\n";
+
+        String structuredPrompt = systemPrompt + "\n\n" +
+                "[CONTEXT]\n" + contextChunks + "\n[/CONTEXT]\n\n" +
+                "[QUESTION]\n" + request.getText() + "\n[/QUESTION]\n\n" +
+                fewShotExample +
+                "Now answer this question:\nQ: " + request.getText() + "\nA:";
 
         // Call GPT-4 via ChatClient
-        String answerText = chatClient.prompt().user(prompt).call().content();
+        String answerText = chatClient.prompt()
+                .user(structuredPrompt)
+                .call()
+                .content();
+
+        // Fallback if model does not answer confidently
+        if (answerText == null || answerText.trim().isEmpty() || answerText.toLowerCase().contains("i don't know")) {
+            answerText = "We could not confidently answer your question based on the document.";
+        }
 
         // Save answer
         Answer answer = new Answer();
@@ -125,6 +142,7 @@ public class QuestionService {
     }
     public interface VectorStore {
         List<Vector> similaritySearch(float[] embedding, int topK);
+        void add(List<Vector> vectors, float[] embedding);
     }
     public static class Vector {
         private final Map<String, String> metadata;

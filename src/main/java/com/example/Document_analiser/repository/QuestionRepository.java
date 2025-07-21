@@ -9,4 +9,6 @@ import java.util.List;
 @Repository
 public interface QuestionRepository extends JpaRepository<Question, Long> {
     List<Question> findAllByUserUsername(String username);
+    List<Question> findByTextContainingIgnoreCaseOrAnswer_TextContainingIgnoreCase(String q1, String q2);
+    List<Question> findByTopicIgnoreCase(String topic);
 } 

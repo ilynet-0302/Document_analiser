@@ -10,6 +10,7 @@ public class Question {
     private Long id;
     private String text;
     private LocalDateTime askedAt;
+    private String topic;
     @ManyToOne
     private Document document;
     @ManyToOne
@@ -63,4 +64,7 @@ public class Question {
     public void setUser(User user) {
         this.user = user;
     }
+
+    public String getTopic() { return topic; }
+    public void setTopic(String topic) { this.topic = topic; }
 } 
