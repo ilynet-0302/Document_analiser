@@ -108,9 +108,9 @@ curl -X POST -H "Content-Type: application/json" -d '{"username":"alice","passwo
   `POST /api/questions` (JSON: text, documentId)  
   Returns: `{ "answer": "...", "generatedAt": "..." }`
 
-- **Question History:**  
-  `GET /api/questions/history`  
-  Returns: list of your questions/answers
+- **Question History:**
+  `GET /api/questions/history?documentId={id}&order=asc|desc&page={n}`
+  Returns: your question history paged and sorted by date (ascending by default). Use `order=desc` for newest first and optionally filter by `documentId`.
 
 - **Edit Question:**  
   `PUT /api/questions/{id}` (JSON: newText)  
@@ -146,8 +146,8 @@ All public endpoints return:
 
 - **Ask a Question:**  
   `GET /ask` (form), `POST /ask` (submit question, see answer)
-- **View History:**  
-  `GET /history` (table of your questions/answers)
+- **View History:**
+  `GET /history` (table of your questions/answers with filter, sort and paging controls)
 
 ---
 

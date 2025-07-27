@@ -92,6 +92,10 @@ public class DocumentService {
         return chunks;
     }
 
+    public List<Document> getAllDocuments() {
+        return documentRepository.findAll();
+    }
+
     // TODO: Implement similarity search
     // public List<Document> findSimilarDocuments(String query, int limit) {
     //     var queryEmbedding = embeddingClient.embed(query);

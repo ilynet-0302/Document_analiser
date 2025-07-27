@@ -8,6 +8,8 @@ public class QuestionHistoryDto {
     private LocalDateTime askedAt;
     private LocalDateTime answeredAt;
     private Long documentId;
+    private String documentName;
+    private String topic;
 
     public String getQuestionText() { return questionText; }
     public void setQuestionText(String questionText) { this.questionText = questionText; }
@@ -19,4 +21,8 @@ public class QuestionHistoryDto {
     public void setAnsweredAt(LocalDateTime answeredAt) { this.answeredAt = answeredAt; }
     public Long getDocumentId() { return documentId; }
     public void setDocumentId(Long documentId) { this.documentId = documentId; }
-} 
+    public String getDocumentName() { return documentName; }
+    public void setDocumentName(String documentName) { this.documentName = documentName; }
+    public String getTopic() { return topic; }
+    public void setTopic(String topic) { this.topic = topic; }
+}

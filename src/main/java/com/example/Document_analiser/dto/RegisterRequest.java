@@ -1,9 +1,12 @@
 package com.example.Document_analiser.dto;
 
 import com.example.Document_analiser.entity.Role;
+import jakarta.validation.constraints.NotBlank;
 
 public class RegisterRequest {
+    @NotBlank
     private String username;
+    @NotBlank
     private String password;
     private Role role;
     public String getUsername() { return username; }

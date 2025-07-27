@@ -1,24 +1,72 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-<head><title>Question History</title></head>
-<body>
-<h1>Question History</h1>
-<a href="/ask">Ask a Question</a>
-<table>
+<head>
+    <title>Question History</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
+</head>
+<body class="container py-4">
+<h1 class="mb-3">Question History</h1>
+<a href="/ask" class="btn btn-link mb-3">Ask a Question</a>
+
+<form method="get" action="/history" class="row g-2 mb-3">
+    <div class="col-auto">
+        <select name="documentId" class="form-select">
+            <option th:value="" th:selected="${selectedDocumentId == null}">All Documents</option>
+            <option th:each="d : ${documents}" th:value="${d.id}" th:text="${d.name}" th:selected="${selectedDocumentId == d.id}"></option>
+        </select>
+    </div>
+    <div class="col-auto">
+        <input type="hidden" name="order" th:value="${currentOrder}" />
+        <button type="submit" class="btn btn-primary">Filter</button>
+    </div>
+</form>
+
+<a class="btn btn-secondary mb-3" th:href="@{/history(page=${historyPage.number}, order=${currentOrder == 'asc' ? 'desc' : 'asc'}, documentId=${selectedDocumentId})}">
+    Sort <span th:text="${currentOrder == 'asc' ? 'Newest' : 'Oldest'}"></span>
+</a>
+
+<div th:if="${historyPage.totalElements == 0}">
+    <p>No history found.</p>
+</div>
+<div th:if="${historyPage.totalElements > 0}">
+<table class="table table-striped">
+  <thead>
   <tr>
     <th>#</th>
+    <th>Document</th>
     <th>Question</th>
     <th>Answer</th>
     <th>Asked At</th>
-    <th>Document ID</th>
+    <th>Topic</th>
   </tr>
-  <tr th:each="q, qStat : ${history}">
-    <td th:text="${qStat.count}"></td>
+  </thead>
+  <tbody>
+  <tr th:each="q, qStat : ${historyPage.content}">
+    <td th:text="${qStat.count + 1 + historyPage.number * historyPage.size}"></td>
+    <td th:text="${q.documentName}"></td>
     <td th:text="${q.questionText}"></td>
-    <td th:text="${q.answerText}"></td>
+    <td>
+        <span th:text="${#strings.length(q.answerText) > 100 ? #strings.substring(q.answerText,0,100)+'...' : q.answerText}" th:id="${'ans'+qStat.count}"></span>
+        <button class="btn btn-link p-0" type="button" th:if="${#strings.length(q.answerText) > 100}" th:onclick="|document.getElementById('ans'+${qStat.count}).innerText='${q.answerText}'; this.remove();|">See more</button>
+    </td>
     <td th:text="${#temporals.format(q.askedAt, 'yyyy-MM-dd HH:mm')}"></td>
-    <td th:text="${q.documentId}"></td>
+    <td th:text="${q.topic}"></td>
   </tr>
+  </tbody>
 </table>
+<nav th:if="${historyPage.totalPages > 1}">
+  <ul class="pagination">
+    <li class="page-item" th:classappend="${historyPage.first}? 'disabled'">
+      <a class="page-link" th:href="@{/history(page=${historyPage.number-1}, order=${currentOrder}, documentId=${selectedDocumentId})}">Previous</a>
+    </li>
+    <li class="page-item" th:each="i : ${#numbers.sequence(0, historyPage.totalPages-1)}" th:classappend="${historyPage.number == i}? 'active'">
+      <a class="page-link" th:href="@{/history(page=${i}, order=${currentOrder}, documentId=${selectedDocumentId})}" th:text="${i+1}"></a>
+    </li>
+    <li class="page-item" th:classappend="${historyPage.last}? 'disabled'">
+      <a class="page-link" th:href="@{/history(page=${historyPage.number+1}, order=${currentOrder}, documentId=${selectedDocumentId})}">Next</a>
+    </li>
+  </ul>
+</nav>
+</div>
 </body>
-</html> 
+</html>

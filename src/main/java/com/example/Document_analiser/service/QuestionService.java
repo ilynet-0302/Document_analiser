@@ -115,25 +115,29 @@ public class QuestionService {
         return response;
     }
 
-    public List<QuestionHistoryDto> getHistory(Long documentId) {
-        String username = SecurityContextHolder.getContext().getAuthentication().getName();
-        List<Question> questions = (documentId == null)
-            ? questionRepository.findAllByUserUsername(username)
-            : questionRepository.findAllByUserUsername(username).stream().filter(q -> q.getDocument().getId().equals(documentId)).toList();
-        return questions.stream()
-                .sorted(Comparator.comparing(Question::getAskedAt).reversed())
-                .map(q -> {
-                    QuestionHistoryDto dto = new QuestionHistoryDto();
-                    dto.setQuestionText(q.getText());
-                    dto.setAskedAt(q.getAskedAt());
-                    dto.setDocumentId(q.getDocument() != null ? q.getDocument().getId() : null);
-                    if (q.getAnswer() != null) {
-                        dto.setAnswerText(q.getAnswer().getText());
-                        dto.setAnsweredAt(q.getAnswer().getGeneratedAt());
-                    }
-                    return dto;
-                })
-                .toList();
+    public org.springframework.data.domain.Page<QuestionHistoryDto> getHistory(
+            String username, Long documentId, int page, int size, boolean ascending) {
+        org.springframework.data.domain.Sort sort = org.springframework.data.domain.Sort.by(
+                ascending ? org.springframework.data.domain.Sort.Direction.ASC :
+                        org.springframework.data.domain.Sort.Direction.DESC,
+                "askedAt");
+        org.springframework.data.domain.Pageable pageable =
+                org.springframework.data.domain.PageRequest.of(page, size, sort);
+
+        var questionsPage = questionRepository.findHistory(username, documentId, pageable);
+        return questionsPage.map(q -> {
+            QuestionHistoryDto dto = new QuestionHistoryDto();
+            dto.setQuestionText(q.getText());
+            dto.setAskedAt(q.getAskedAt());
+            dto.setDocumentId(q.getDocument() != null ? q.getDocument().getId() : null);
+            dto.setDocumentName(q.getDocument() != null ? q.getDocument().getName() : null);
+            dto.setTopic(q.getTopic());
+            if (q.getAnswer() != null) {
+                dto.setAnswerText(q.getAnswer().getText());
+                dto.setAnsweredAt(q.getAnswer().getGeneratedAt());
+            }
+            return dto;
+        });
     }
 
     // Stub interfaces/classes for embedding and vector search

@@ -10,9 +10,8 @@ import com.example.Document_analiser.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.http.HttpStatus;
 
@@ -35,8 +34,12 @@ public class QuestionController {
     }
 
     @GetMapping("/questions/history")
-    public java.util.List<QuestionHistoryDto> getHistory(@RequestParam(value = "documentId", required = false) Long documentId) {
-        return questionService.getHistory(documentId);
+    public java.util.List<QuestionHistoryDto> getHistory(
+            @AuthenticationPrincipal org.springframework.security.core.userdetails.User user,
+            @RequestParam(value = "documentId", required = false) Long documentId,
+            @RequestParam(value = "order", defaultValue = "asc") String order) {
+        boolean asc = !"desc".equalsIgnoreCase(order);
+        return questionService.getHistory(user.getUsername(), documentId, asc);
     }
 
     @Operation(summary = "Edit a question (owner or admin only)", description = "Edit a question if you are the owner or have ADMIN role.")
@@ -66,19 +69,5 @@ public class QuestionController {
         }
         questionService.getQuestionRepository().delete(question);
         return ResponseEntity.ok("Question deleted.");
-    }
-}
-
-@Controller
-@RequestMapping("/history")
-class QuestionHistoryPageController {
-    private final QuestionService questionService;
-    public QuestionHistoryPageController(QuestionService questionService) {
-        this.questionService = questionService;
-    }
-    @GetMapping
-    public String historyPage(@RequestParam(value = "documentId", required = false) Long documentId, Model model) {
-        model.addAttribute("historyList", questionService.getHistory(documentId));
-        return "history";
     }
 }
