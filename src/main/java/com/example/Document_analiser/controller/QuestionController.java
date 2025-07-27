@@ -11,9 +11,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.User;
 
 @RestController
 @RequestMapping("/api")
@@ -34,12 +35,13 @@ public class QuestionController {
     }
 
     @GetMapping("/questions/history")
-    public java.util.List<QuestionHistoryDto> getHistory(
-            @AuthenticationPrincipal org.springframework.security.core.userdetails.User user,
+    public org.springframework.data.domain.Page<QuestionHistoryDto> getHistory(
+            @AuthenticationPrincipal User user,
             @RequestParam(value = "documentId", required = false) Long documentId,
-            @RequestParam(value = "order", defaultValue = "asc") String order) {
+            @RequestParam(value = "order", defaultValue = "asc") String order,
+            @RequestParam(value = "page", defaultValue = "0") int page) {
         boolean asc = !"desc".equalsIgnoreCase(order);
-        return questionService.getHistory(user.getUsername(), documentId, asc);
+        return questionService.getHistory(user.getUsername(), documentId, page, 10, asc);
     }
 
     @Operation(summary = "Edit a question (owner or admin only)", description = "Edit a question if you are the owner or have ADMIN role.")
