@@ -2,108 +2,112 @@
 
 ## Prerequisites
 
-1. **PostgreSQL Database** with pgvector extension
-2. **OpenAI API Key** for embeddings
-3. **Java 21** and Maven
+- **PostgreSQL 12+** with the pgvector extension
+- **OpenAI API key** for embeddings and chat completion
+- **Java 21** and **Maven 3.6+**
 
-## Database Setup
+## 1. Database
 
-1. Create a PostgreSQL database:
+Create the database and enable pgvector:
+
 ```sql
 CREATE DATABASE document_analyser;
-```
-
-2. Enable the pgvector extension:
-```sql
+\c document_analyser
 CREATE EXTENSION IF NOT EXISTS vector;
 ```
 
-## Configuration
+## 2. Configuration
 
-1. Set your OpenAI API key as an environment variable:
+Set your OpenAI API key and database credentials.
+
 ```bash
 export OPENAI_API_KEY=your_openai_api_key_here
 ```
 
-2. Update `src/main/resources/application.properties` with your database credentials:
+Edit `src/main/resources/application.properties`:
+
 ```properties
 spring.datasource.url=jdbc:postgresql://localhost:5432/document_analyser
 spring.datasource.username=your_username
 spring.datasource.password=your_password
 ```
 
-## Running the Application
+## 3. Build & Run
 
-1. Build the project:
 ```bash
 mvn clean install
-```
-
-2. Run the application:
-```bash
 mvn spring-boot:run
 ```
 
-## API Endpoints
+Visit [http://localhost:8080](http://localhost:8080) and log in to access the UI.
+
+## 4. Authentication
+
+Use the JSON endpoints to register and obtain a JWT token:
+
+```bash
+curl -X POST -H "Content-Type: application/json" -d '{"username":"alice","password":"pass123"}' http://localhost:8080/auth/register
+curl -X POST -H "Content-Type: application/json" -d '{"username":"alice","password":"pass123"}' http://localhost:8080/auth/login
+# Use the returned token as: Authorization: Bearer <token>
+```
+
+UI pages (`/ask`, `/upload`, `/history`) require login. The REST API also expects the JWT in the `Authorization` header.
+
+## 5. API Endpoints
 
 ### Upload Document
-- **POST** `/api/documents`
-- **Content-Type**: `multipart/form-data`
-- **Parameter**: `file` (currently supports .txt files only)
-
-Example using curl:
-```bash
-curl -X POST -F "file=@document.txt" http://localhost:8080/api/documents
-```
+- `POST /api/documents` (multipart/form-data, param: `file`)
 
 ### Ask Question
-- **POST** `/ask`
-- **Content-Type**: `text/plain`
-- **Body**: Your question
+- `POST /api/questions` (JSON: `text`, `documentId`)
 
-Example using curl:
-```bash
-curl -X POST -H "Content-Type: text/plain" -d "What is this document about?" http://localhost:8080/ask
-```
+### Question History
+- `GET /api/questions/history?documentId={id}&order=asc|desc&page={n}`
 
-## Current Features
+## 6. Web UI
 
-✅ Document upload and storage in PostgreSQL
-✅ Text extraction from .txt files
-✅ JPA entities for Document, Question, and Answer
-✅ Basic chat functionality with dummy responses
-✅ Database configuration with pgvector extension
+- **/ask** – Ask a question about a selected document
+- **/upload** – Upload a `.txt` document (size-limited client and server validation)
+- **/history** – Paginated table of your previous questions and answers with document filtering
 
-## TODO Features
-
-- [ ] PDF and DOCX support using Apache Tika
-- [ ] Document chunking for large files
-- [ ] Embedding generation and vector storage
-- [ ] Similarity search implementation
-- [ ] Enhanced question-answering with document context
-
-## Project Structure
+## 7. Project Structure
 
 ```
 src/main/java/com/example/Document_analiser/
 ├── DocumentAnaliserApplication.java    # Main application class
-├── ChatClient.java                     # Chat client implementation
-├── ChatController.java                 # Chat REST controller
 ├── controller/
-│   └── DocumentController.java         # Document upload controller
+│   ├── AuthController.java            # Register/login endpoints
+│   ├── UiController.java              # Thymeleaf pages
+│   ├── QuestionController.java        # REST API for questions
+│   ├── PublicQuestionController.java  # Public Q&A API
+│   └── DocumentController.java        # REST API for documents
 ├── service/
-│   └── DocumentService.java            # Document processing service
+│   ├── QuestionService.java
+│   ├── DocumentService.java
+│   ├── AuthService.java
+│   └── CustomUserDetailsService.java
 ├── entity/
-│   ├── Document.java                   # Document entity
-│   ├── Question.java                   # Question entity
-│   └── Answer.java                     # Answer entity
+│   ├── User.java, Role.java
+│   ├── Document.java
+│   ├── Question.java
+│   └── Answer.java
 ├── repository/
-│   ├── DocumentRepository.java         # Document repository
-│   ├── QuestionRepository.java         # Question repository
-│   └── AnswerRepository.java           # Answer repository
-├── dto/
-│   ├── QuestionRequest.java            # Question request DTO
-│   └── AnswerResponse.java             # Answer response DTO
-└── config/
-    └── DatabaseConfig.java             # Database configuration
-``` 
+│   ├── UserRepository.java
+│   ├── DocumentRepository.java
+│   ├── QuestionRepository.java
+│   └── AnswerRepository.java
+├── config/
+│   ├── SecurityConfig.java, DatabaseConfig.java
+└── resources/templates/
+    ├── layout.html, home.html
+    ├── ask.html, upload.html
+    ├── history.html
+    └── fragments/answer.html
+```
+
+## 8. Next Steps
+
+- PDF and DOCX support via Apache Tika
+- Document chunking and embedding storage
+- Semantic similarity search for better context
+- Richer answer editing and moderation tools
