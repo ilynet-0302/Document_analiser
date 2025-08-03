@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="layout :: layout(~{::body})">
+<body>
+<section>
+    <h1><i class="bi bi-upload me-1"></i>Upload Document</h1>
+    <div th:if="${message}" th:class="'alert alert-' + (${status} ?: 'info')" th:text="${message}"></div>
+    <form id="uploadForm" th:action="@{/upload}" method="post" enctype="multipart/form-data" th:object="${uploadRequest}" class="mt-3">
+        <div class="mb-3">
+            <input type="file" th:field="*{file}" class="form-control" accept=".txt" data-bs-toggle="tooltip" title="Choose a text file" th:classappend="${#fields.hasErrors('file')}? ' is-invalid'" />
+            <div class="invalid-feedback" th:if="${#fields.hasErrors('file')}" th:errors="*{file}"></div>
+        </div>
+        <button type="submit" id="uploadBtn" class="btn btn-primary" data-bs-toggle="tooltip" title="Upload document">
+            <span id="uploadSpinner" class="spinner-border spinner-border-sm me-1 d-none" role="status" aria-hidden="true"></span>
+            <i class="bi bi-cloud-upload me-1"></i>Upload
+        </button>
+    </form>
+    <div id="uploadLoading" class="text-info mt-2 d-none">Please wait...</div>
+</section>
+<script>
+    const fileInput = document.querySelector('input[type="file"]');
+    const uploadForm = document.getElementById('uploadForm');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const uploadSpinner = document.getElementById('uploadSpinner');
+    const uploadLoading = document.getElementById('uploadLoading');
+
+    if(fileInput){
+        fileInput.addEventListener('change', function(){
+            const file = this.files[0];
+            if(file && file.size > 5 * 1024 * 1024){
+                alert('File size exceeds 5MB limit');
+                this.value = '';
+            }
+        });
+    }
+
+    if(uploadForm){
+        uploadForm.addEventListener('submit', function(){
+            uploadSpinner.classList.remove('d-none');
+            uploadBtn.disabled = true;
+            if(uploadLoading){ uploadLoading.classList.remove('d-none'); }
+        });
+    }
+</script>
+</body>
+</html>

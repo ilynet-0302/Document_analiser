@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="answerCard (answerText)">
+    <div class="card mt-4">
+        <div class="card-header">
+            <i class="bi bi-chat-left-text me-1"></i> Answer
+        </div>
+        <div class="card-body">
+            <p th:text="${answerText}"></p>
+        </div>
+    </div>
+</div>
+
+<li th:fragment="historyItem (a)" class="list-group-item">
+    <strong th:text="${a.questionText}"></strong>
+    <p class="mb-1" th:text="${a.answerText}"></p>
+    <small class="text-muted" th:text="${#temporals.format(a.askedAt, 'yyyy-MM-dd HH:mm')}"></small>
+</li>
+</body>
+</html>

@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:replace="layout :: layout(~{::body})">
+<body>
+<section>
+    <h1>Answers</h1>
+    <div th:if="${#lists.isEmpty(answers)}">
+        <p>No answers yet.</p>
+    </div>
+    <ul class="list-group" th:if="${!#lists.isEmpty(answers)}">
+        <li th:each="a : ${answers}" th:replace="fragments/answer :: historyItem(${a})"></li>
+    </ul>
+</section>
+</body>
+</html>
