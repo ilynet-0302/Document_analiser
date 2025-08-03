@@ -28,7 +28,7 @@ public class QuestionHistoryPageController {
     public String historyPage(
             @AuthenticationPrincipal User user,
             @RequestParam(value = "documentId", required = false) Long documentId,
-            @RequestParam(value = "order", defaultValue = "asc") String order,
+            @RequestParam(value = "order", defaultValue = "desc") String order,
             @RequestParam(value = "page", defaultValue = "0") int page,
             Model model) {
         boolean asc = !"desc".equalsIgnoreCase(order);

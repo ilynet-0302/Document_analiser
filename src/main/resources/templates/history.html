@@ -1,12 +1,9 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
-<head>
-    <title>Question History</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
-</head>
-<body class="container py-4">
+<html xmlns:th="http://www.thymeleaf.org" th:replace="layout :: layout(~{::body})">
+<body>
+<section>
 <h1 class="mb-3">Question History</h1>
-<a href="/ask" class="btn btn-link mb-3">Ask a Question</a>
+<a class="btn btn-link mb-3" th:href="@{/ask}">Ask a Question</a>
 
 <form method="get" action="/history" class="row g-2 mb-3">
     <div class="col-auto">
@@ -32,17 +29,7 @@
 <table class="table table-striped">
   <thead>
   <tr>
-    <th>#</th>
-    <th>Document</th>
-    <th>Question</th>
-    <th>Answer</th>
-    <th>Asked At</th>
-    <th>Topic</th>
-  </tr>
-  </thead>
-  <tbody>
-  <tr th:each="q, qStat : ${historyPage.content}">
-    <td th:text="${qStat.count + 1 + historyPage.number * historyPage.size}"></td>
+@@ -46,27 +43,28 @@
     <td th:text="${q.documentName}"></td>
     <td th:text="${q.questionText}"></td>
     <td>
@@ -68,5 +55,6 @@
   </ul>
 </nav>
 </div>
+</section>
 </body>
 </html>

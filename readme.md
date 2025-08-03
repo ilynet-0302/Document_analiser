@@ -15,7 +15,7 @@ A full-stack Spring Boot application for intelligent document analysis. Upload d
 - **Role-Based Security**: JWT authentication, user/ADMIN roles, secure endpoints
 - **Edit/Delete Q&A**: Only owners or admins can edit/delete questions
 - **Public Q&A API**: Search and access questions/answers by ID, text, or topic (no auth required)
-- **Web UI**: Ask questions and view your history via a modern Thymeleaf interface
+- **Thymeleaf Web UI**: Upload documents, ask questions, and review your history with client/server validation and loading indicators
 - **REST API**: Clean, documented endpoints for all operations (Swagger/OpenAPI)
 
 ---
@@ -41,14 +41,7 @@ A full-stack Spring Boot application for intelligent document analysis. Upload d
 ### Prerequisites
 
 - Java 21+
-- Maven 3.6+
-- PostgreSQL 12+ with pgvector extension
-- OpenAI API key
-
-### 1. Database Setup
-
-```sql
-CREATE DATABASE document_analyser;
+@@ -52,51 +52,51 @@ CREATE DATABASE document_analyser;
 \c document_analyser
 CREATE EXTENSION IF NOT EXISTS vector;
 ```
@@ -74,7 +67,7 @@ mvn clean install
 mvn spring-boot:run
 ```
 
-Visit: [http://localhost:8080/ask](http://localhost:8080/ask) (web UI)
+Visit: [http://localhost:8080/ask](http://localhost:8080/ask) to ask questions or [http://localhost:8080/upload](http://localhost:8080/upload) to add documents (requires login)
 
 ---
 
@@ -99,7 +92,7 @@ curl -X POST -H "Content-Type: application/json" -d '{"username":"alice","passwo
 
 ### Document Management
 
-- **Upload Document:**  
+- **Upload Document:** 
   `POST /api/documents` (multipart/form-data, param: `file`)
 
 ### Q&A (Authenticated)
@@ -144,8 +137,10 @@ All public endpoints return:
 
 ### User Interface (Thymeleaf)
 
-- **Ask a Question:**  
+- **Ask a Question:**
   `GET /ask` (form), `POST /ask` (submit question, see answer)
+- **Upload Document:**
+  `GET /upload` (form), `POST /upload` (submit document)
 - **View History:**
   `GET /history` (table of your questions/answers with filter, sort and paging controls)
 
@@ -153,8 +148,9 @@ All public endpoints return:
 
 ## 🖥️ Web UI
 
-- **/ask**: Submit a question about a document (enter question and document ID)
-- **/history**: View your own question/answer history (table, sortable)
+- **/ask** – Ask a question about one of your documents. Includes a document dropdown, validation, and a loading spinner while the model responds.
+- **/upload** – Upload a `.txt` document with client-side size checks and server-side validation. Displays success or error messages after redirect.
+- **/history** – View paginated question/answer history with document filtering and sortable dates.
 
 ---
 
@@ -192,7 +188,10 @@ src/main/java/com/example/Document_analiser/
 ├── config/
 │   ├── SecurityConfig.java, DatabaseConfig.java
 └── resources/templates/
-    ├── ask.html, history.html         # Thymeleaf UI templates
+    ├── layout.html, home.html          # Layout and landing page
+    ├── ask.html, upload.html           # Question and upload forms
+    ├── history.html                    # Question history table
+    └── fragments/answer.html           # Reusable answer component
 ```
 
 ---
@@ -238,6 +237,7 @@ curl http://localhost:8080/public/search?query=security
 ```
 
 **Web UI:**
+- Go to `/upload` to add a document
 - Go to `/ask` to submit a question
 - Go to `/history` to view your own Q&A history
 

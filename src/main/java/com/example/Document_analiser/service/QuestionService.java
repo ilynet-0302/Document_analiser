@@ -72,11 +72,16 @@ public class QuestionService {
         // Generate embedding for the question
         float[] questionEmbedding = embeddingClient.embed(request.getText());
 
-        // Similarity search (top 5)
-        List<Vector> matches = vectorStore.similaritySearch(questionEmbedding, 5);
+        // Similarity search (top 5) and build context
+        List<Vector> matches = Optional.ofNullable(vectorStore.similaritySearch(questionEmbedding, 5))
+                .orElse(Collections.emptyList());
         String contextChunks = matches.stream()
                 .map(v -> v.getMetadata().get("content"))
+                .filter(Objects::nonNull)
                 .collect(Collectors.joining("\n---\n"));
+        if (contextChunks.isBlank()) {
+            throw new IllegalStateException("No relevant context found in the selected document.");
+        }
 
         // Prompt engineering
         String systemPrompt = "You are an intelligent assistant that answers questions based only on provided context. " +
