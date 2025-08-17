@@ -6,6 +6,9 @@ public class ChatClient {
     }
 
     public static class ChatClientPrompt {
+        public ChatClientPrompt system(String message) {
+            return this;
+        }
         public ChatClientPrompt user(String question) {
             return this;
         }

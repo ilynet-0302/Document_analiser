@@ -2,6 +2,8 @@ package com.example.Document_analiser.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 public class Document {
@@ -13,6 +15,9 @@ public class Document {
     private LocalDateTime uploadDate;
     @Lob
     private String content;
+
+    @OneToMany(mappedBy = "document", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<DocumentChunk> chunks = new ArrayList<>();
 
     // Getters and Setters
     public Long getId() {
@@ -54,4 +59,12 @@ public class Document {
     public void setContent(String content) {
         this.content = content;
     }
-} 
+
+    public List<DocumentChunk> getChunks() {
+        return chunks;
+    }
+
+    public void setChunks(List<DocumentChunk> chunks) {
+        this.chunks = chunks;
+    }
+}

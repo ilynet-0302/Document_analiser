@@ -1,78 +1,96 @@
 package com.example.Document_analiser.service;
 
 import com.example.Document_analiser.entity.Document;
-import com.example.Document_analiser.repository.DocumentRepository;
+import com.example.Document_analiser.entity.DocumentChunk;
 import com.example.Document_analiser.exception.UnsupportedFileTypeException;
-import org.apache.tika.Tika;
-import org.apache.tika.exception.TikaException;
+import com.example.Document_analiser.repository.DocumentRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.text.BreakIterator;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
+import java.util.Locale;
 
 @Service
 public class DocumentService {
-    
+
+    private static final Logger log = LoggerFactory.getLogger(DocumentService.class);
+    private static final int MAX_CHUNK_TOKENS = 512;
+
     private final DocumentRepository documentRepository;
     private final QuestionService.EmbeddingClient embeddingClient;
-    private final QuestionService.VectorStore vectorStore;
+    private final List<DocumentTextExtractor> textExtractors;
+    private final String embeddingModel;
 
     public DocumentService(DocumentRepository documentRepository,
                           QuestionService.EmbeddingClient embeddingClient,
-                          QuestionService.VectorStore vectorStore) {
+                          List<DocumentTextExtractor> textExtractors,
+                          @Value("${embedding.model}") String embeddingModel) {
         this.documentRepository = documentRepository;
         this.embeddingClient = embeddingClient;
-        this.vectorStore = vectorStore;
+        this.textExtractors = textExtractors;
+        this.embeddingModel = embeddingModel;
     }
 
     public void store(MultipartFile file) throws IOException {
-        // Ограничение за размер (5MB)
         if (file.getSize() > 5 * 1024 * 1024) {
             throw new IllegalArgumentException("File size exceeds 5MB limit");
         }
+
+        documentRepository.findByName(file.getOriginalFilename())
+                .ifPresent(documentRepository::delete);
+
         String documentText = extractTextFromFile(file);
+        List<String> chunks = chunkText(documentText, MAX_CHUNK_TOKENS);
 
-        // Chunk-ване на текста (200 думи на chunk)
-        List<String> chunks = chunkText(documentText, 200);
-
-        // Създаване и запис на Document
         Document document = new Document();
         document.setName(file.getOriginalFilename());
         document.setType(getFileExtension(file.getOriginalFilename()));
         document.setUploadDate(LocalDateTime.now());
         document.setContent(documentText);
-        Document savedDocument = documentRepository.save(document);
 
-        // Индексиране на всеки chunk във векторната база
-        for (int i = 0; i < chunks.size(); i++) {
-            String chunk = chunks.get(i);
-            float[] embedding = embeddingClient.embed(chunk);
-            vectorStore.add(List.of(new QuestionService.Vector(
-                Map.of(
-                    "documentId", savedDocument.getId().toString(),
-                    "chunkIndex", String.valueOf(i),
-                    "content", chunk
-                )
-            )), embedding);
+        List<DocumentChunk> chunkEntities = new ArrayList<>();
+        int index = 0;
+        for (String chunk : chunks) {
+            if (chunk.trim().isEmpty()) {
+                log.warn("Skipping empty chunk {} for document {}", index, file.getOriginalFilename());
+                continue;
+            }
+            float[] embedding = null;
+            try {
+                embedding = embeddingClient.embed(chunk, embeddingModel);
+            } catch (Exception e) {
+                log.warn("Failed to generate embedding for chunk {}: {}", index, e.getMessage());
+            }
+            if (embedding == null) {
+                log.warn("Embedding generation returned null for chunk {}", index);
+                continue;
+            }
+            DocumentChunk dc = new DocumentChunk();
+            dc.setChunkIndex(index);
+            dc.setContent(chunk);
+            dc.setEmbedding(embedding);
+            dc.setDocument(document);
+            chunkEntities.add(dc);
+            index++;
         }
+        document.setChunks(chunkEntities);
+        documentRepository.save(document);
     }
 
     private String extractTextFromFile(MultipartFile file) throws IOException {
-        Tika tika = new Tika();
-        String mimeType = tika.detect(file.getInputStream());
-        if (!mimeType.startsWith("application/") && !mimeType.startsWith("text/")) {
-            throw new UnsupportedFileTypeException(mimeType);
+        for (DocumentTextExtractor extractor : textExtractors) {
+            if (extractor.supports(file)) {
+                return extractor.extract(file);
+            }
         }
-        try {
-            return tika.parseToString(file.getInputStream());
-        } catch (TikaException e) {
-            throw new IOException("Failed to extract text from file", e);
-        }
+        throw new UnsupportedFileTypeException(file.getContentType());
     }
 
     private String getFileExtension(String filename) {
@@ -84,10 +102,20 @@ public class DocumentService {
 
     public List<String> chunkText(String content, int maxTokens) {
         List<String> chunks = new ArrayList<>();
-        String[] words = content.split("\\s+");
-        for (int i = 0; i < words.length; i += maxTokens) {
-            int end = Math.min(i + maxTokens, words.length);
-            chunks.add(String.join(" ", Arrays.copyOfRange(words, i, end)));
+        BreakIterator iterator = BreakIterator.getSentenceInstance(Locale.getDefault());
+        iterator.setText(content);
+        StringBuilder current = new StringBuilder();
+        int start = iterator.first();
+        for (int end = iterator.next(); end != BreakIterator.DONE; start = end, end = iterator.next()) {
+            String sentence = content.substring(start, end);
+            if (current.length() + sentence.length() > maxTokens && current.length() > 0) {
+                chunks.add(current.toString().trim());
+                current.setLength(0);
+            }
+            current.append(sentence);
+        }
+        if (current.length() > 0) {
+            chunks.add(current.toString().trim());
         }
         return chunks;
     }
@@ -96,10 +124,8 @@ public class DocumentService {
         return documentRepository.findAll();
     }
 
-    // TODO: Implement similarity search
+    // TODO: Implement similarity search using stored chunk embeddings
     // public List<Document> findSimilarDocuments(String query, int limit) {
-    //     var queryEmbedding = embeddingClient.embed(query);
-    //     var results = vectorStore.search(SearchRequest.query(queryEmbedding).withTopK(limit));
-    //     // Process results and return documents
+    //     // Placeholder for future implementation
     // }
-} 
+}
