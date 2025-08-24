@@ -17,7 +17,10 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
     List<Question> findByTextContainingIgnoreCaseOrAnswer_TextContainingIgnoreCase(String q1, String q2);
     List<Question> findByTopicIgnoreCase(String topic);
 
-    @Query("SELECT q FROM Question q WHERE q.user.username = :username AND (:documentId IS NULL OR q.document.id = :documentId)")
+    @Query("SELECT q FROM Question q " +
+           "LEFT JOIN FETCH q.answer " +
+           "LEFT JOIN FETCH q.document " +
+           "WHERE q.user.username = :username AND (:documentId IS NULL OR q.document.id = :documentId)")
     Page<Question> findHistory(@Param("username") String username,
                                @Param("documentId") Long documentId,
                                Pageable pageable);

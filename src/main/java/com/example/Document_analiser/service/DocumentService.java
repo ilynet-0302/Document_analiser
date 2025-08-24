@@ -4,9 +4,12 @@ import com.example.Document_analiser.entity.Document;
 import com.example.Document_analiser.entity.DocumentChunk;
 import com.example.Document_analiser.exception.UnsupportedFileTypeException;
 import com.example.Document_analiser.repository.DocumentRepository;
+import io.micrometer.core.annotation.Timed;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -38,7 +41,10 @@ public class DocumentService {
         this.embeddingModel = embeddingModel;
     }
 
+    @Timed(value = "document.store.time", description = "Time taken to store and process document")
+    @CacheEvict(value = {"documents", "documentChunks"}, allEntries = true, cacheManager = "quickCacheManager")
     public void store(MultipartFile file) throws IOException {
+        log.info("Storing document: {} (size: {} bytes)", file.getOriginalFilename(), file.getSize());
         if (file.getSize() > 5 * 1024 * 1024) {
             throw new IllegalArgumentException("File size exceeds 5MB limit");
         }
@@ -47,7 +53,10 @@ public class DocumentService {
                 .ifPresent(documentRepository::delete);
 
         String documentText = extractTextFromFile(file);
+        log.debug("Extracted {} characters from document", documentText.length());
+        
         List<String> chunks = chunkText(documentText, MAX_CHUNK_TOKENS);
+        log.debug("Created {} chunks from document", chunks.size());
 
         Document document = new Document();
         document.setName(file.getOriginalFilename());
@@ -62,12 +71,7 @@ public class DocumentService {
                 log.warn("Skipping empty chunk {} for document {}", index, file.getOriginalFilename());
                 continue;
             }
-            float[] embedding = null;
-            try {
-                embedding = embeddingClient.embed(chunk, embeddingModel);
-            } catch (Exception e) {
-                log.warn("Failed to generate embedding for chunk {}: {}", index, e.getMessage());
-            }
+            float[] embedding = getCachedEmbedding(chunk);
             if (embedding == null) {
                 log.warn("Embedding generation returned null for chunk {}", index);
                 continue;
@@ -120,8 +124,26 @@ public class DocumentService {
         return chunks;
     }
 
+    @Cacheable(value = "documents", cacheManager = "quickCacheManager")
+    @Timed(value = "document.getAll.time", description = "Time taken to retrieve all documents")
     public List<Document> getAllDocuments() {
+        log.debug("Retrieving all documents from database");
         return documentRepository.findAll();
+    }
+
+    /**
+     * Gets cached embedding for text to avoid expensive recomputation.
+     */
+    @Cacheable(value = "embeddings", key = "#text.hashCode()", cacheManager = "embeddingCacheManager")
+    @Timed(value = "embedding.generation.time", description = "Time taken to generate embeddings")
+    private float[] getCachedEmbedding(String text) {
+        log.debug("Generating embedding for chunk: {}", text.substring(0, Math.min(50, text.length())));
+        try {
+            return embeddingClient.embed(text, embeddingModel);
+        } catch (Exception e) {
+            log.error("Failed to generate embedding for chunk: {}", e.getMessage());
+            return null;
+        }
     }
 
     // TODO: Implement similarity search using stored chunk embeddings
