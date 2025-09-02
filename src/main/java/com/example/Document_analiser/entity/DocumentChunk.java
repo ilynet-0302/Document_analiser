@@ -15,7 +15,7 @@ public class DocumentChunk {
 
     private int chunkIndex;
 
-    @Column(columnDefinition = "vector")
+    @Column(columnDefinition = "vector(1536)")
     private float[] embedding;
 
     @ManyToOne(fetch = FetchType.LAZY)

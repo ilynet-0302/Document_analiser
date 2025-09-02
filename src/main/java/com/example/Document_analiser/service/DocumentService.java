@@ -42,7 +42,10 @@ public class DocumentService {
     }
 
     @Timed(value = "document.store.time", description = "Time taken to store and process document")
-    @CacheEvict(value = {"documents", "documentChunks"}, allEntries = true, cacheManager = "quickCacheManager")
+    @org.springframework.cache.annotation.Caching(evict = {
+            @CacheEvict(value = "documents", allEntries = true, cacheManager = "cacheManager"),
+            @CacheEvict(value = "documentChunks", allEntries = true, cacheManager = "quickCacheManager")
+    })
     public void store(MultipartFile file) throws IOException {
         log.info("Storing document: {} (size: {} bytes)", file.getOriginalFilename(), file.getSize());
         if (file.getSize() > 5 * 1024 * 1024) {
@@ -124,7 +127,7 @@ public class DocumentService {
         return chunks;
     }
 
-    @Cacheable(value = "documents", cacheManager = "quickCacheManager")
+    @Cacheable(value = "documents", cacheManager = "cacheManager")
     @Timed(value = "document.getAll.time", description = "Time taken to retrieve all documents")
     public List<Document> getAllDocuments() {
         log.debug("Retrieving all documents from database");

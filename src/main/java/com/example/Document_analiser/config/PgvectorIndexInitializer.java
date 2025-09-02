@@ -15,6 +15,17 @@ public class PgvectorIndexInitializer {
 
     @PostConstruct
     public void createIndex() {
-        jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS document_chunks_embedding_idx ON document_chunks USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100)");
+        try {
+            // Ensure the embedding column has fixed dimensions required by pgvector indexes
+            jdbcTemplate.execute(
+                    "ALTER TABLE IF EXISTS document_chunks " +
+                            "ALTER COLUMN embedding TYPE vector(1536) USING embedding::vector(1536)");
+        } catch (Exception ignored) {
+            // If the column already has dimensions or table missing during bootstrap, ignore
+        }
+
+        jdbcTemplate.execute(
+                "CREATE INDEX IF NOT EXISTS document_chunks_embedding_idx " +
+                        "ON document_chunks USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100)");
     }
 }

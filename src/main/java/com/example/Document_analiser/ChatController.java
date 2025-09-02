@@ -7,16 +7,16 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 public class ChatController {
-    private final ChatClient chatClient;
+    private final AiChatClient chatClient;
     private final String systemPrompt;
 
-    public ChatController(ChatClient chatClient,
+    public ChatController(AiChatClient chatClient,
                           @Value("${prompt.system}") String systemPrompt) {
         this.chatClient = chatClient;
         this.systemPrompt = systemPrompt;
     }
 
-    @PostMapping("/ask")
+    @PostMapping("/api/ask")
     public String ask(@RequestBody String question) {
         return chatClient.prompt()
                 .system(systemPrompt)

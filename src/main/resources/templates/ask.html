@@ -13,11 +13,10 @@
         </div>
         <div class="col-md-4">
             <label class="form-label">Document:</label>
-            <select id="documentSelect" class="form-select" data-bs-toggle="tooltip" title="Select a document" th:classappend="${#fields.hasErrors('documentId')}? ' is-invalid'">
-                <option value="" disabled>Select document</option>
+            <select th:field="*{documentId}" class="form-select" data-bs-toggle="tooltip" title="Select a document" th:classappend="${#fields.hasErrors('documentId')}? ' is-invalid'">
+                <option value="" disabled selected>Select document</option>
                 <option th:each="d : ${documents}" th:value="${d.id}" th:text="${d.name}"></option>
             </select>
-            <input type="hidden" id="documentId" th:field="*{documentId}" />
             <div class="invalid-feedback" th:if="${#fields.hasErrors('documentId')}" th:errors="*{documentId}"></div>
         </div>
         <div class="col-md-2 d-flex align-items-end">
@@ -38,17 +37,7 @@
     const btn = document.getElementById('askBtn');
     const spinner = document.getElementById('askSpinner');
     const loading = document.getElementById('askLoading');
-    const docSelect = document.getElementById('documentSelect');
-    const docId = document.getElementById('documentId');
-
-    if(docSelect && docId){
-        if(docId.value){
-            docSelect.value = docId.value;
-        }
-        docSelect.addEventListener('change', ()=>{
-            docId.value = docSelect.value;
-        });
-    }
+    // Document select is bound directly via th:field
 
     if(form){
         form.addEventListener('submit', function(){

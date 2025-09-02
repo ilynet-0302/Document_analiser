@@ -8,7 +8,8 @@ public class Answer {
     @Id 
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    @Lob
+    // Store as PostgreSQL text to allow case-insensitive queries
+    @Column(columnDefinition = "text")
     private String text;
     private LocalDateTime generatedAt;
     @OneToOne

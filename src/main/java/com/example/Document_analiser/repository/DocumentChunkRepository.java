@@ -15,19 +15,19 @@ public interface DocumentChunkRepository extends JpaRepository<DocumentChunk, Lo
     @Query(value = """
             SELECT * FROM document_chunks
             WHERE document_id = :docId
-            ORDER BY embedding <=> :embedding
+            ORDER BY embedding <=> CAST(:embedding AS vector(1536))
             LIMIT :limit
             """, nativeQuery = true)
-    List<DocumentChunk> findTopByCosineSimilarity(@Param("embedding") float[] embedding,
+    List<DocumentChunk> findTopByCosineSimilarity(@Param("embedding") String embedding,
                                                    @Param("docId") Long documentId,
                                                    @Param("limit") int limit);
 
     @Query(value = """
             SELECT * FROM document_chunks
-            ORDER BY embedding <=> :embedding
+            ORDER BY embedding <=> CAST(:embedding AS vector(1536))
             LIMIT :limit
             """, nativeQuery = true)
-    List<DocumentChunk> findTopChunks(@Param("embedding") float[] embedding,
+    List<DocumentChunk> findTopChunks(@Param("embedding") String embedding,
                                       @Param("limit") int limit);
 
     /**

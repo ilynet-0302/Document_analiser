@@ -12,7 +12,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.example.Document_analiser.ChatClient;
+import com.example.Document_analiser.AiChatClient;
 import com.example.Document_analiser.dto.AnswerResponse;
 import com.example.Document_analiser.dto.QuestionHistoryDto;
 import com.example.Document_analiser.dto.QuestionRequest;
@@ -40,9 +40,10 @@ public class QuestionService {
     private final AnswerService answerService;
     private final DocumentRepository documentRepository;
     private final UserRepository userRepository;
-    private final ChatClient chatClient;
+    private final AiChatClient chatClient;
     private final EmbeddingClient embeddingClient;
     private final DocumentChunkRepository documentChunkRepository;
+    private final VectorSearchService vectorSearchService;
     private final LogAnalysisService logAnalysisService;
     private final String systemPrompt;
     private final String answerInstruction;
@@ -54,9 +55,10 @@ public class QuestionService {
                           AnswerService answerService,
                           DocumentRepository documentRepository,
                           UserRepository userRepository,
-                          ChatClient chatClient,
+                          AiChatClient chatClient,
                           EmbeddingClient embeddingClient,
                           DocumentChunkRepository documentChunkRepository,
+                          VectorSearchService vectorSearchService,
                           LogAnalysisService logAnalysisService,
                           @Value("${prompt.system}") String systemPrompt,
                           @Value("${prompt.answer}") String answerInstruction,
@@ -69,6 +71,7 @@ public class QuestionService {
         this.chatClient = chatClient;
         this.embeddingClient = embeddingClient;
         this.documentChunkRepository = documentChunkRepository;
+        this.vectorSearchService = vectorSearchService;
         this.logAnalysisService = logAnalysisService;
         this.systemPrompt = systemPrompt;
         this.answerInstruction = answerInstruction;
@@ -92,7 +95,6 @@ public class QuestionService {
      * @param request question payload containing text and document ID
      * @return answer response with generated text and timestamp
      */
-    @Transactional
     @Timed(value = "question.processing.time", description = "Time taken to process a question")
     public AnswerResponse askQuestion(QuestionRequest request) {
         log.debug("Processing question: {} for document: {}", request.getText(), request.getDocumentId());
@@ -142,7 +144,47 @@ public class QuestionService {
     }
 
     private List<DocumentChunk> findRelevantChunks(float[] questionEmbedding, Long documentId) {
-        return documentChunkRepository.findTopByCosineSimilarity(questionEmbedding, documentId, TOP_K);
+        try {
+            return vectorSearchService.findTopByCosineSimilarity(questionEmbedding, documentId, TOP_K);
+        } catch (Exception e) {
+            log.warn("Vector SQL search failed, falling back to in-memory similarity: {}", e.getMessage());
+            try {
+                var pageable = org.springframework.data.domain.PageRequest.of(0, 1000);
+                List<DocumentChunk> all = documentChunkRepository.findByDocumentIdOrderByChunkIndex(documentId, pageable);
+                List<DocumentChunk> ranked = all.stream()
+                        .filter(dc -> dc.getEmbedding() != null)
+                        .sorted((a, b) -> Float.compare(
+                                cosineSimilarity(b.getEmbedding(), questionEmbedding),
+                                cosineSimilarity(a.getEmbedding(), questionEmbedding)))
+                        .limit(TOP_K)
+                        .toList();
+                if (ranked.isEmpty() && !all.isEmpty()) {
+                    // Last-resort: take first K chunks by order if embeddings are unavailable
+                    log.debug("Falling back to first {} chunks by order", TOP_K);
+                    return all.stream()
+                            .limit(TOP_K)
+                            .toList();
+                }
+                return ranked;
+            } catch (Exception ex) {
+                log.error("Fallback similarity search failed: {}", ex.getMessage());
+                return java.util.Collections.emptyList();
+            }
+        }
+    }
+
+    private float cosineSimilarity(float[] v1, float[] v2) {
+        if (v1 == null || v2 == null || v1.length != v2.length) return -1f;
+        double dot = 0, n1 = 0, n2 = 0;
+        for (int i = 0; i < v1.length; i++) {
+            float a = v1[i];
+            float b = v2[i];
+            dot += a * b;
+            n1 += a * a;
+            n2 += b * b;
+        }
+        double denom = Math.sqrt(n1) * Math.sqrt(n2);
+        return denom == 0 ? -1f : (float)(dot / denom);
     }
 
     /**

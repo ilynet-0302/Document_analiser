@@ -47,7 +47,13 @@ public class CacheConfig {
     public CacheManager quickCacheManager() {
         CaffeineCacheManager cacheManager = new CaffeineCacheManager();
         cacheManager.setCacheSpecification("maximumSize=2000,expireAfterWrite=10m,expireAfterAccess=5m,recordStats");
-        cacheManager.setCacheNames(List.of("relevantChunks", "documentChunks", "chunkStats"));
+        cacheManager.setCacheNames(List.of(
+                "relevantChunks",
+                "documentChunks",
+                "chunkStats",
+                // used by QuestionService.getHistory()
+                "questionHistory"
+        ));
         return cacheManager;
     }
 
