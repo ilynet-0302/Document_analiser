@@ -117,13 +117,13 @@ public class QuestionService {
 
         if (questionEmbedding == null) {
             log.warn("Failed to generate embedding for question: {}", request.getText());
-            return saveAnswer(question, fallbackMessage);
+            return saveAnswer(question, getFallbackMessageClean());
         }
 
         List<DocumentChunk> matches = findRelevantChunks(questionEmbedding, document.getId());
         if (matches == null || matches.isEmpty()) {
             log.debug("No relevant chunks found for question: {}", request.getText());
-            return saveAnswer(question, fallbackMessage);
+            return saveAnswer(question, getFallbackMessageClean());
         }
 
         log.debug("Found {} relevant chunks for question", matches.size());
@@ -131,12 +131,12 @@ public class QuestionService {
 
         String contextPrompt = buildContextPrompt(matches, request.getText());
         if (contextPrompt == null) {
-            return saveAnswer(question, fallbackMessage);
+            return saveAnswer(question, getFallbackMessageClean());
         }
 
         String answerText = generateAnswer(contextPrompt);
         if (answerText == null || answerText.trim().isEmpty() || answerText.toLowerCase().contains("i don't know")) {
-            answerText = fallbackMessage;
+            answerText = getFallbackMessageClean();
         }
 
         log.debug("Generated answer for question: {}", request.getText());
@@ -147,30 +147,106 @@ public class QuestionService {
         try {
             return vectorSearchService.findTopByCosineSimilarity(questionEmbedding, documentId, TOP_K);
         } catch (Exception e) {
-            log.warn("Vector SQL search failed, falling back to in-memory similarity: {}", e.getMessage());
+            log.warn("Vector SQL search failed, falling back to safer path", e);
             try {
-                var pageable = org.springframework.data.domain.PageRequest.of(0, 1000);
-                List<DocumentChunk> all = documentChunkRepository.findByDocumentIdOrderByChunkIndex(documentId, pageable);
-                List<DocumentChunk> ranked = all.stream()
-                        .filter(dc -> dc.getEmbedding() != null)
-                        .sorted((a, b) -> Float.compare(
-                                cosineSimilarity(b.getEmbedding(), questionEmbedding),
-                                cosineSimilarity(a.getEmbedding(), questionEmbedding)))
-                        .limit(TOP_K)
-                        .toList();
-                if (ranked.isEmpty() && !all.isEmpty()) {
-                    // Last-resort: take first K chunks by order if embeddings are unavailable
-                    log.debug("Falling back to first {} chunks by order", TOP_K);
-                    return all.stream()
-                            .limit(TOP_K)
-                            .toList();
+                // Smarter fallback: keyword scoring over content-only projection
+                var pageable = org.springframework.data.domain.PageRequest.of(0, 2000);
+                var views = documentChunkRepository.findContentByDocumentId(documentId, pageable);
+                if (views == null || views.isEmpty()) return java.util.Collections.emptyList();
+
+                // Build a simple keyword set from the question
+                String currentQuestion = com.example.Document_analiser.util.RequestTextHolder.get();
+                java.util.Set<String> keywords = extractKeywords(currentQuestion);
+                // Add domain synonyms for Bulgarian "форсмажор"
+                String qLower = currentQuestion == null ? "" : currentQuestion.toLowerCase();
+                if (qLower.contains("форсмажор")) {
+                    keywords.add("непреодолима сила");
                 }
-                return ranked;
+
+                java.util.List<DocumentChunk> candidates = new java.util.ArrayList<>();
+                java.util.List<ChunkScore> scored = new java.util.ArrayList<>();
+                for (var v : views) {
+                    String content = v.getContent();
+                    if (content == null || content.isBlank()) continue;
+                    int score = scoreContent(content, keywords);
+                    if (score > 0) {
+                        scored.add(new ChunkScore(v.getId(), v.getChunkIndex(), content, score));
+                    }
+                }
+
+                // If nothing matched, fallback to first K by order
+                if (scored.isEmpty()) {
+                    log.debug("Keyword fallback found no matches; using first {} chunks", TOP_K);
+                    var pageK = org.springframework.data.domain.PageRequest.of(0, TOP_K);
+                    var first = documentChunkRepository.findContentByDocumentId(documentId, pageK);
+                    for (var v : first) {
+                        DocumentChunk dc = new DocumentChunk();
+                        dc.setId(v.getId());
+                        dc.setChunkIndex(v.getChunkIndex());
+                        dc.setContent(v.getContent());
+                        candidates.add(dc);
+                    }
+                    candidates.sort(Comparator.comparingInt(DocumentChunk::getChunkIndex));
+                    return candidates;
+                }
+
+                scored.sort((a,b) -> Integer.compare(b.score, a.score));
+                for (int i=0; i<Math.min(TOP_K, scored.size()); i++) {
+                    var s = scored.get(i);
+                    DocumentChunk dc = new DocumentChunk();
+                    dc.setId(s.id);
+                    dc.setChunkIndex(s.chunkIndex);
+                    dc.setContent(s.content);
+                    candidates.add(dc);
+                }
+                candidates.sort(Comparator.comparingInt(DocumentChunk::getChunkIndex));
+                return candidates;
             } catch (Exception ex) {
-                log.error("Fallback similarity search failed: {}", ex.getMessage());
+                log.error("Fallback similarity search failed", ex);
                 return java.util.Collections.emptyList();
             }
         }
+    }
+
+    // Simple keyword tokenizer and scorer used in fallback path
+    private java.util.Set<String> extractKeywords(String text) {
+        java.util.Set<String> out = new java.util.HashSet<>();
+        if (text == null) return out;
+        String lower = text.toLowerCase(java.util.Locale.of("bg"));
+        // Split on non-letters, keep multi-word phrases later via special cases
+        for (String t : lower.split("[^\u0400-\u04FFa-zA-Z0-9]+")) {
+            if (t.length() < 2) continue;
+            if (STOPWORDS_BG.contains(t)) continue;
+            out.add(t);
+        }
+        return out;
+    }
+
+    private int scoreContent(String content, java.util.Set<String> keywords) {
+        if (keywords.isEmpty() || content == null) return 0;
+        String lower = content.toLowerCase(java.util.Locale.of("bg"));
+        int score = 0;
+        for (String k : keywords) {
+            if (k.contains(" ")) {
+                if (lower.contains(k)) score += 3; // phrase boost
+            } else {
+                // Count occurrences roughly
+                int idx = 0; int c = 0;
+                while ((idx = lower.indexOf(k, idx)) >= 0) { c++; idx += k.length(); }
+                score += c;
+            }
+        }
+        return score;
+    }
+
+    private static final java.util.Set<String> STOPWORDS_BG = java.util.Set.of(
+            "какво","какъв","коя","кое","какви","е","са","съм","сме","сте","за","на","в","до","или","и","от","по","дали","има","как"
+    );
+
+    // Helper holder for scoring
+    private static class ChunkScore {
+        final Long id; final int chunkIndex; final String content; final int score;
+        ChunkScore(Long id, int chunkIndex, String content, int score) { this.id=id; this.chunkIndex=chunkIndex; this.content=content; this.score=score; }
     }
 
     private float cosineSimilarity(float[] v1, float[] v2) {
@@ -187,6 +263,15 @@ public class QuestionService {
         return denom == 0 ? -1f : (float)(dot / denom);
     }
 
+    // Clean Bulgarian fallback message
+    private String getFallbackMessageClean() {
+        return "Все още няма отговор. Няма достатъчно данни в документа за отговор.";
+    }
+
+    private String getFallbackMessage() {
+        return "Все още няма отговор. Няма достатъчно данни в документа за отговор.";
+    }
+
     /**
      * Retrieves paged question history for the given user and optional document filter.
      * Cached for improved performance on repeated requests.
@@ -201,6 +286,7 @@ public class QuestionService {
     @Cacheable(value = "questionHistory", key = "#username + '_' + #documentId + '_' + #page + '_' + #size + '_' + #ascending", 
                cacheManager = "quickCacheManager")
     @Timed(value = "question.history.time", description = "Time taken to retrieve question history")
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public org.springframework.data.domain.Page<QuestionHistoryDto> getHistory(
             String username, Long documentId, int page, int size, boolean ascending) {
         log.debug("Retrieving question history for user: {}, document: {}, page: {}", username, documentId, page);

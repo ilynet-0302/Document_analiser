@@ -55,6 +55,7 @@ public class UiController {
             return "ask";
         }
         try {
+            com.example.Document_analiser.util.RequestTextHolder.set(questionRequest.getText());
             var response = questionService.askQuestion(questionRequest);
             redirectAttributes.addFlashAttribute("answer", response.getAnswer());
             redirectAttributes.addFlashAttribute("selectedDocumentId", questionRequest.getDocumentId());
@@ -66,6 +67,8 @@ public class UiController {
             redirectAttributes.addFlashAttribute("status", "danger");
             redirectAttributes.addFlashAttribute("message", "Failed to get answer: " + e.getMessage());
             redirectAttributes.addFlashAttribute("selectedDocumentId", questionRequest.getDocumentId());
+        } finally {
+            com.example.Document_analiser.util.RequestTextHolder.clear();
         }
         return "redirect:/ask";
     }

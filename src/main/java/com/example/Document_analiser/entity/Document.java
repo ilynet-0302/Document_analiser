@@ -13,7 +13,9 @@ public class Document {
     private String name;
     private String type;
     private LocalDateTime uploadDate;
-    @Lob
+    // Large text; store as PostgreSQL text and load lazily to avoid LOB stream issues
+    @Basic(fetch = FetchType.LAZY)
+    @Column(columnDefinition = "text")
     private String content;
 
     @OneToMany(mappedBy = "document", cascade = CascadeType.ALL, orphanRemoval = true)

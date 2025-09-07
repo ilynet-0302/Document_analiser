@@ -8,7 +8,7 @@
 <form method="get" action="/history" class="row g-2 mb-3">
     <div class="col-auto">
         <select name="documentId" class="form-select">
-            <option th:value="" th:selected="${selectedDocumentId == null}">All Documents</option>
+            <option value="" th:selected="${selectedDocumentId == null}">All Documents</option>
             <option th:each="d : ${documents}" th:value="${d.id}" th:text="${d.name}" th:selected="${selectedDocumentId == d.id}"></option>
         </select>
     </div>
@@ -28,17 +28,29 @@
 <div th:if="${historyPage.totalElements > 0}">
 <table class="table table-striped">
   <thead>
-  <tr>
-@@ -46,27 +43,28 @@
-    <td th:text="${q.documentName}"></td>
-    <td th:text="${q.questionText}"></td>
-    <td>
-        <span th:text="${#strings.length(q.answerText) > 100 ? #strings.substring(q.answerText,0,100)+'...' : q.answerText}" th:id="${'ans'+qStat.count}"></span>
-        <button class="btn btn-link p-0" type="button" th:if="${#strings.length(q.answerText) > 100}" th:onclick="|document.getElementById('ans'+${qStat.count}).innerText='${q.answerText}'; this.remove();|">See more</button>
-    </td>
-    <td th:text="${#temporals.format(q.askedAt, 'yyyy-MM-dd HH:mm')}"></td>
-    <td th:text="${q.topic}"></td>
-  </tr>
+    <tr>
+      <th>Document</th>
+      <th>Question</th>
+      <th>Answer</th>
+      <th>Asked At</th>
+      <th>Topic</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr th:each="q, qStat : ${historyPage.content}">
+      <td th:text="${q.documentName}"></td>
+      <td th:text="${q.questionText}"></td>
+      <td>
+        <span th:id="${'ans'+qStat.count}"
+              th:text="${q.answerText != null ? (#strings.length(q.answerText) > 100 ? #strings.substring(q.answerText,0,100)+'...' : q.answerText) : '—'}"></span>
+        <button class="btn btn-link p-0" type="button"
+                th:if="${q.answerText != null and #strings.length(q.answerText) > 100}"
+                th:attr="data-ans=${q.answerText}"
+                th:onclick="|document.getElementById('ans'+${qStat.count}).innerText=this.dataset.ans; this.remove();|">See more</button>
+      </td>
+      <td th:text="${#temporals.format(q.askedAt, 'yyyy-MM-dd HH:mm')}"></td>
+      <td th:text="${q.topic}"></td>
+    </tr>
   </tbody>
 </table>
 <nav th:if="${historyPage.totalPages > 1}">

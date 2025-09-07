@@ -21,7 +21,25 @@ public class VectorSearchService {
     // don't mark outer transactions as rollback-only
     @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
     public List<DocumentChunk> findTopByCosineSimilarity(float[] embedding, Long documentId, int limit) {
-        return documentChunkRepository.findTopByCosineSimilarity(toPgVectorLiteral(embedding), documentId, limit);
+        var ids = documentChunkRepository.findTopIdsByCosineSimilarity(toPgVectorLiteral(embedding), documentId, limit);
+        if (ids == null || ids.isEmpty()) return java.util.Collections.emptyList();
+        // Fetch only content via projection to avoid reading vector column
+        var views = documentChunkRepository.findContentByIdIn(ids);
+        // Convert to lightweight DocumentChunk instances for downstream code
+        java.util.Map<Long, com.example.Document_analiser.repository.projection.ChunkContentView> byId = new java.util.HashMap<>();
+        for (var v : views) byId.put(v.getId(), v);
+        java.util.List<DocumentChunk> out = new java.util.ArrayList<>();
+        for (Long id : ids) {
+            var v = byId.get(id);
+            if (v != null) {
+                DocumentChunk dc = new DocumentChunk();
+                dc.setId(v.getId());
+                dc.setChunkIndex(v.getChunkIndex());
+                dc.setContent(v.getContent());
+                out.add(dc);
+            }
+        }
+        return out;
     }
 
     private String toPgVectorLiteral(float[] v) {

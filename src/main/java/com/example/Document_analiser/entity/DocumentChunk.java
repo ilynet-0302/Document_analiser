@@ -11,6 +11,7 @@ public class DocumentChunk {
     private Long id;
 
     @Lob
+    @Basic(fetch = FetchType.LAZY)
     private String content;
 
     private int chunkIndex;

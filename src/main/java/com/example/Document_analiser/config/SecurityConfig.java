@@ -31,7 +31,23 @@ public class SecurityConfig {
         http
             .csrf(AbstractHttpConfigurer::disable)
             .authorizeHttpRequests(auth ->
-                auth.requestMatchers("/auth/**").permitAll()
+                auth
+                    .requestMatchers(
+                        "/auth/**",
+                        "/",
+                        "/favicon.ico",
+                        "/.well-known/**",
+                        "/webjars/**",
+                        "/v3/api-docs/**",
+                        "/swagger-ui/**",
+                        "/css/**",
+                        "/js/**",
+                        "/images/**",
+                        "/static/**",
+                        "/public/**",
+                        "/actuator/health",
+                        "/actuator/info"
+                    ).permitAll()
                     .anyRequest().authenticated()
             )
             .formLogin(Customizer.withDefaults())
