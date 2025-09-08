@@ -4,8 +4,8 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Component;
 
 /**
- * Thin adapter over Spring AI's {@link ChatClient} to keep
- * the existing call chain used by QuestionService.
+ * Тънък адаптер над Spring AI {@link ChatClient} за да запазим
+ * съществуващия начин на извикване от QuestionService/контролери.
  */
 @Component
 public class AiChatClient {

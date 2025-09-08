@@ -16,6 +16,11 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 
+/**
+ * Контролер за регистрация и логин с JWT.
+ * - /auth/register: създава потребител с роля (по подразбиране USER).
+ * - /auth/login: валидира и връща JWT токен при успех.
+ */
 @RestController
 @RequestMapping("/auth")
 @Validated
@@ -33,6 +38,7 @@ public class AuthController {
         this.jwtUtil = jwtUtil;
     }
 
+    /** Регистрира нов потребител. */
     @PostMapping("/register")
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
         if (userRepository.findByUsername(request.getUsername()).isPresent()) {
@@ -46,6 +52,7 @@ public class AuthController {
         return ResponseEntity.ok("User registered successfully");
     }
 
+    /** Логва потребител и връща JWT. */
     @PostMapping("/login")
     public ResponseEntity<?> login(@Valid @RequestBody LoginRequest loginRequest) {
         try {

@@ -10,6 +10,10 @@ import org.springframework.stereotype.Service;
 
 import java.util.Collections;
 
+/**
+ * Зарежда потребители от базата за Spring Security логин процеса.
+ * - Връща {@link UserDetails} с роли във формат "ROLE_<ROLE>".
+ */
 @Service
 public class CustomUserDetailsService implements UserDetailsService {
     private final UserRepository userRepository;

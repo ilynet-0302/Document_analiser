@@ -8,6 +8,10 @@ import io.swagger.v3.oas.annotations.OpenAPIDefinition;
 import io.swagger.v3.oas.annotations.info.Contact;
 import io.swagger.v3.oas.annotations.info.Info;
 
+/**
+ * Основен Spring Boot клас – стартова точка на приложението.
+ * Съдържа и OpenAPI метаданни за по-лесна документация на API.
+ */
 @SpringBootApplication
 @OpenAPIDefinition(
         info = @Info(

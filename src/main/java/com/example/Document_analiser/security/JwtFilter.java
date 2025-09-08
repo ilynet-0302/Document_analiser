@@ -18,6 +18,12 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 
+/**
+ * Филтър за извличане и валидиране на JWT от заглавката Authorization.
+ *
+ * - Какво прави: ако има "Bearer <token>", извлича потребителя, валидира токена
+ *   и поставя Authentication в SecurityContext за текущата заявка.
+ */
 @Component
 public class JwtFilter extends OncePerRequestFilter {
     private final JwtUtil jwtUtil;
@@ -29,6 +35,7 @@ public class JwtFilter extends OncePerRequestFilter {
         this.userDetailsService = userDetailsService;
     }
 
+    /** Основна логика на филтъра – изпълнява се веднъж за заявка. */
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
                                     @NonNull HttpServletResponse response,

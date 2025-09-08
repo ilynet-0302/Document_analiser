@@ -29,8 +29,8 @@ import com.example.Document_analiser.repository.UserRepository;
 import io.micrometer.core.annotation.Timed;
 
 /**
- * Handles question processing, semantic search and answer generation.
- * Optimized with caching and performance monitoring.
+ * Обработва въпроси: намира релевантни части от документи и генерира отговори.
+ * Оптимизации: кеширане (на embeddings/история), метрики и устойчиви fallbacks.
  */
 @Service
 public class QuestionService {

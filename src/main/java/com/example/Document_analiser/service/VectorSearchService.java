@@ -8,6 +8,13 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
+/**
+ * Служба за векторно търсене върху pgvector.
+ *
+ * - Какво прави: намира най-близките по косинусова близост chunk-ове спрямо embedding.
+ * - Как: първо взима само идентификатори по векторен ранг (бързо), после зарежда
+ *   съдържанието чрез проекции, за да избегне четене на тежката vector колона.
+ */
 @Service
 public class VectorSearchService {
 
@@ -17,8 +24,15 @@ public class VectorSearchService {
         this.documentChunkRepository = documentChunkRepository;
     }
 
-    // Run vector SQL in a separate, read-only transaction so failures
-    // don't mark outer transactions as rollback-only
+    /**
+     * Стартира векторния SQL в отделна, read-only транзакция, за да не маркира
+     * външни транзакции като rollback-only при грешка.
+     *
+     * @param embedding вектор на заявката
+     * @param documentId филтър по документ (или null за глобално търсене)
+     * @param limit брой резултати
+     * @return подреден списък от най-подходящи chunk-ове по ранг
+     */
     @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = true)
     public List<DocumentChunk> findTopByCosineSimilarity(float[] embedding, Long documentId, int limit) {
         var ids = documentChunkRepository.findTopIdsByCosineSimilarity(toPgVectorLiteral(embedding), documentId, limit);
@@ -42,6 +56,7 @@ public class VectorSearchService {
         return out;
     }
 
+    /** Конвертира float[] към pgvector литерал за SQL (например "[0.1,0.2,...]"). */
     private String toPgVectorLiteral(float[] v) {
         StringBuilder sb = new StringBuilder();
         sb.append("[");

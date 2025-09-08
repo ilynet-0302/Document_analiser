@@ -15,6 +15,14 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+/**
+ * Конфигурация на сигурността (Spring Security).
+ *
+ * - Какво прави: описва кои маршрути са публични, кои изискват
+ *   автентикация, добавя JWT филтър преди стандартния филтър за логин,
+ *   и конфигурира енкодера за пароли и AuthenticationManager.
+ * - Защо е важно: централно място, което контролира достъпа до API-то.
+ */
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
@@ -26,6 +34,10 @@ public class SecurityConfig {
         this.userDetailsService = userDetailsService;
     }
 
+    /**
+     * Главната верига от филтри: разрешава публичните ендпойнти, забранява CSRF
+     * за REST, изисква автентикация за останалите и вмъква {@link JwtFilter}.
+     */
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
@@ -56,11 +68,16 @@ public class SecurityConfig {
         return http.build();
     }
 
+    /** Енкодер за пароли (BCrypt). */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
+    /**
+     * Построява {@link AuthenticationManager} използвайки нашия {@link UserDetailsService}
+     * и същия енкодер, за да валидира потребители при логин.
+     */
     @Bean
     public AuthenticationManager authenticationManager(HttpSecurity http) throws Exception {
         AuthenticationManagerBuilder builder = http.getSharedObject(AuthenticationManagerBuilder.class);

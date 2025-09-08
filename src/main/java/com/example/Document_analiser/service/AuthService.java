@@ -4,8 +4,12 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
+/**
+ * Помощна услуга за проверки, свързани с текущия потребител.
+ */
 @Service
 public class AuthService {
+    /** Връща дали текущо автентикираният потребител има роля ADMIN. */
     public boolean isCurrentUserAdmin() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         return auth != null && auth.getAuthorities().stream()

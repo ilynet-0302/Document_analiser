@@ -5,6 +5,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * Минимален контролер за директни AI въпроси (демо/пример).
+ * - Какво прави: подава системен prompt и въпроса към AI клиента и връща отговора.
+ */
 @RestController
 public class ChatController {
     private final AiChatClient chatClient;
@@ -17,6 +21,7 @@ public class ChatController {
     }
 
     @PostMapping("/api/ask")
+    /** Приема въпрос като текст и връща генерирания отговор. */
     public String ask(@RequestBody String question) {
         return chatClient.prompt()
                 .system(systemPrompt)

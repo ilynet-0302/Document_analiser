@@ -4,13 +4,23 @@ import com.example.Document_analiser.service.QuestionService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+/**
+ * Конфигурация на embedding клиент.
+ *
+ * - Какво прави: осигурява детерминирана локална имплементация за генериране
+ *   на векторни представяния (embeddings), за да работи търсенето без външни
+ *   зависимости.
+ * - Защо: бързо и стабилно за dev/демо; размерът трябва да съвпада с
+ *   pgvector колоната (1536).
+ */
 @Configuration
 public class EmbeddingConfig {
 
+    /** Връща имплементация на {@link QuestionService.EmbeddingClient} с локални embeddings. */
     @Bean
     public QuestionService.EmbeddingClient embeddingClient() {
-        // Deterministic local embeddings to keep search working without extra deps
-        final int dim = 1536; // must match vector(1536)
+        // Детерминирани локални embeddings, за да няма външни зависимости
+        final int dim = 1536; // трябва да съвпада с vector(1536)
         return (text, model) -> {
             float[] v = new float[dim];
             if (text == null) return v;

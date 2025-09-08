@@ -19,7 +19,14 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
-
+/**
+ * Услуга за съхранение и обработка на документи.
+ *
+ * - Какво прави: извлича текст от качени файлове, разделя го на chunk-ове,
+ *   генерира embeddings и записва всичко в базата (Document + DocumentChunk).
+ * - Оптимизации: кеширане на embeddings (скъпо за генериране), метрики (@Timed),
+ *   изчистване на свързани кешове при запис.
+ */
 @Service
 public class DocumentService {
 
@@ -46,6 +53,12 @@ public class DocumentService {
             @CacheEvict(value = "documents", allEntries = true, cacheManager = "cacheManager"),
             @CacheEvict(value = "documentChunks", allEntries = true, cacheManager = "quickCacheManager")
     })
+    /**
+     * Приема файл, извлича текст, chunk-ва го, генерира embeddings и
+     * съхранява Document и неговите DocumentChunk записи.
+     * - Валидира размер (примерно ограничение 5MB).
+     * - Изтрива стар документ със същото име за по-лесно демо/повторно качване.
+     */
     public void store(MultipartFile file) throws IOException {
         log.info("Storing document: {} (size: {} bytes)", file.getOriginalFilename(), file.getSize());
         if (file.getSize() > 5 * 1024 * 1024) {
@@ -91,6 +104,7 @@ public class DocumentService {
         documentRepository.save(document);
     }
 
+    /** Намира подходящия extractor според типа файл и извлича чист текст. */
     private String extractTextFromFile(MultipartFile file) throws IOException {
         for (DocumentTextExtractor extractor : textExtractors) {
             if (extractor.supports(file)) {
@@ -100,6 +114,7 @@ public class DocumentService {
         throw new UnsupportedFileTypeException(file.getContentType());
     }
 
+    /** Връща разширението на файла (без .), или "unknown". */
     private String getFileExtension(String filename) {
         if (filename != null && filename.contains(".")) {
             return filename.substring(filename.lastIndexOf(".") + 1);
@@ -107,6 +122,10 @@ public class DocumentService {
         return "unknown";
     }
 
+    /**
+     * Разделя текста на приблизително "максимум символи" парчета по изречения.
+     * Забележка: тук "tokens" се използва като праг по символи за простота.
+     */
     public List<String> chunkText(String content, int maxTokens) {
         List<String> chunks = new ArrayList<>();
         BreakIterator iterator = BreakIterator.getSentenceInstance(Locale.getDefault());
@@ -129,6 +148,7 @@ public class DocumentService {
 
     @Cacheable(value = "documents", cacheManager = "cacheManager")
     @Timed(value = "document.getAll.time", description = "Time taken to retrieve all documents")
+    /** Връща всички документи (резултатът се кешира). */
     public List<Document> getAllDocuments() {
         log.debug("Retrieving all documents from database");
         return documentRepository.findAll();
@@ -139,6 +159,10 @@ public class DocumentService {
      */
     @Cacheable(value = "embeddings", key = "#text.hashCode()", cacheManager = "embeddingCacheManager")
     @Timed(value = "embedding.generation.time", description = "Time taken to generate embeddings")
+    /**
+     * Генерира embedding за даден текст и го кешира по hash на текста.
+     * Връща null при грешка (chunkът се пропуска).
+     */
     private float[] getCachedEmbedding(String text) {
         log.debug("Generating embedding for chunk: {}", text.substring(0, Math.min(50, text.length())));
         try {
